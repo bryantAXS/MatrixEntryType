@@ -326,6 +326,12 @@ class Entry_type_ft extends EE_Fieldtype
 		return $fields;
 	}
 
+	public function _dump($data){
+		echo "<pre>";
+		echo print_r($data);
+		echo "</pre>";
+	}
+
 	public function display_settings($settings)
 	{
 		$this->EE->lang->loadfile('entry_type', 'entry_type');
@@ -344,6 +350,8 @@ class Entry_type_ft extends EE_Fieldtype
 
 		$vars['fields'] = $this->fields();
 		
+		//$this->_dump($vars['fields']);
+
 		$this->convert_old_settings($settings);
 		
 		if (empty($this->settings['type_options']))
@@ -407,40 +415,41 @@ class Entry_type_ft extends EE_Fieldtype
 
 		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row', array('i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $vars['fields']), TRUE));
 
-		$this->EE->javascript->output('
-			EE.entryTypeSettings = {
-				rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
-				addRow: function() {
-					$("#entry_type_options tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options tbody tr").length));
-				},
-				removeRow: function(index) {
-					$("#entry_type_options tbody tr").eq(index).remove();
-					EE.entryTypeSettings.orderRows();
-				},
-				orderRows: function() {
-					$("#entry_type_options tbody tr").each(function(index){
-						$(this).find(":input").each(function(){
-							var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
-							if (match) {
-								$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
-							}
-						});
-					});
-				}
-			};
+		// $this->EE->javascript->output('
+		// 	EE.entryTypeSettings = {
+		// 		rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
+		// 		addRow: function() {
+		// 			console.log("a");
+		// 			$("#entry_type_options tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options tbody tr").length));
+		// 		},
+		// 		removeRow: function(index) {
+		// 			$("#entry_type_options tbody tr").eq(index).remove();
+		// 			EE.entryTypeSettings.orderRows();
+		// 		},
+		// 		orderRows: function() {
+		// 			$("#entry_type_options tbody tr").each(function(index){
+		// 				$(this).find(":input").each(function(){
+		// 					var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
+		// 					if (match) {
+		// 						$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
+		// 					}
+		// 				});
+		// 			});
+		// 		}
+		// 	};
 			
-			$("#entry_type_add_row").click(EE.entryTypeSettings.addRow);
-			$(".entry_type_remove_row").live("click", function(){
-				if (confirm("'.lang('confirm_delete_type').'")) {
-					EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
-				}
-			});
-			$("#entry_type_options tbody").sortable({
-				stop: function(e, ui) {
-					EE.entryTypeSettings.orderRows();
-				}
-			}).children("tr").css({cursor:"move"});
-		');
+		// 	$("#entry_type_add_row").click(EE.entryTypeSettings.addRow);
+		// 	$(".entry_type_remove_row").live("click", function(){
+		// 		if (confirm("'.lang('confirm_delete_type').'")) {
+		// 			EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
+		// 		}
+		// 	});
+		// 	$("#entry_type_options tbody").sortable({
+		// 		stop: function(e, ui) {
+		// 			EE.entryTypeSettings.orderRows();
+		// 		}
+		// 	}).children("tr").css({cursor:"move"});
+		// ');
 	}
 
 	public function save_settings($data)
@@ -480,7 +489,215 @@ class Entry_type_ft extends EE_Fieldtype
 		
 		return $settings;
 	}
+
+	/* M A T R I X  C E L L  I N T E G R A T I O N */
+
+	public function _prep_cell_settings($settings)
+	{
+		//$settings = array_merge($default_settings, $settings);
+		//if ($settings['entry_type_options'] == 'any') $settings['content'] = 'all';
+	}
+
+
+
+	/**
+	 * Function that returns the fields we want in our cell type options container
+	 * @param  array $data previously-saved celltype settings for the column 
+	 * @return [type]
+	 */
+	public function display_cell_settings($data){
+
+		if(! isset($data['type_options'])){
+			return;
+		}
+
+		//loading pre-reqs
+		$this->EE->lang->loadfile('entry_type', 'entry_type');
+		$this->EE->load->helper(array('array', 'html'));
+		$this->EE->cp->add_js_script(array('ui' => array('sortable')));
+		$field_id = $this->EE->input->get('field_id');
+
+		//we need to setup two variables which get parsed in the views:
+		// $type_options: an array containing the values for each entry type
+		// $cells: an array starting with a value of 1 index, with the name of the cells we can hide
+
+		// First step is setting up the cells array for this matrix field, to feature in the Hide Fields multiselect
+		// This will involve looking at the $data array to determine it, or running a query on the matrix_cols tabls
+		if( ! isset($this->cache['cells'])){
+
+			$query = $this->EE->db->get_where('matrix_cols', array('field_id' => $field_id));
+			$i = 1;
+			
+			$cells = array();
+			foreach ($query->result() as $row)
+			{	
+	
+				//we need to get the col id which is used when we're building dynmaic entry rows
+				if(! isset($col_id)){
+					$col_id = $row->col_id;
+				}
+
+				$cells[(string) $i] = $row->col_label;
+				$i++;
+			}
+
+			$this->cache['cells'] = $cells;
+
+		}else{
+			$cells = $this->cache['cells'];
+		}
+
+		// the next step is running over our $entry_type_options from the $data array and setting it up to be displayed in our form.
+		// if it's not set in $data we need to re-create it with blank placeholders
+		if (empty($data['type_options']))
+		{
+			$type_options = array(
+				'' => array(
+					'hide_fields' => array(),
+					'label' => '',
+				),
+			);
+		}
+		else
+		{
+			foreach ($data['type_options'] as $value => $option)
+			{
+				if ( ! isset($option['hide_fields']))
+				{
+					$data['type_options'][$value]['hide_fields'] = array();
+				}
+				
+				if ( ! isset($option['label']))
+				{
+					$data['type_options'][$value]['label'] = $value;
+				}
+			}
+			
+			$type_options = $data['type_options'];
+		}
+
+		
+		//we have to add some javascript to handle the displaying and deleting of rows.
+
+		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row_matrix_dynamic', array('col_id' => $col_id, 'i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $cells), TRUE));
+
+		$this->EE->javascript->output('
+			EE.entryTypeSettings = {
+				rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
+				addRow: function() {
+					$("#entry_type_options_matrix tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options_matrix tbody tr").length));
+				},
+				removeRow: function(index) {
+					$("#entry_type_options_matrix tbody tr").eq(index).remove();
+					EE.entryTypeSettings.orderRows();
+				},
+				orderRows: function() {
+					$("#entry_type_options_matrix tbody tr").each(function(index){
+						$(this).find(":input").each(function(){
+							var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
+							if (match) {
+								$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
+							}
+						});
+					});
+				}
+			};
+			
+			$("#entry_type_add_row_matrix").click(EE.entryTypeSettings.addRow);
+			$(".entry_type_remove_row_matrix").live("click", function(){
+				if (confirm("'.lang('confirm_delete_type').'")) {
+					EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
+				}
+			});
+			$("#entry_type_options_matrix tbody").sortable({
+				stop: function(e, ui) {
+					EE.entryTypeSettings.orderRows();
+				}
+			}).children("tr").css({cursor:"move"});
+			
+			console.log($("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea"));
+
+			$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").live("focus",function(){
+				
+				name = $(this).attr("name");
+				col_id = name.split("][")[1].split("_")[2];
+				console.log(col_id);
+
+			});
+
+			$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").live("blur",function(){
+				
+			});
+
+		');
+
+		//now we add our two variables to the $vars array which we pass to the views
+		$vars = array();
+		$vars['type_options'] = $type_options;
+		$vars['fields'] = $cells;
+
+		return $this->EE->load->view('options_matrix', $vars, TRUE);
+		
+	}
+
+
+
+	/**
+	 * Modify the matrix cell settings' post data before it gets saved to the database
+	 * @param  array $data post data that came from any inputs you created in display_cell_settings()
+	 * @return [type]
+	 */
+	public function save_cell_settings($data){
+
+		//this entire method was copied from the above save_settings()
+
+		if ( ! isset($data['entry_type_options']))
+		{
+			return;
+		}
+		
+		$settings['type_options'] = array();
+		
+		if (isset($data['entry_type_options']) && is_array($data['entry_type_options']))
+		{
+			foreach ($data['entry_type_options'] as $row)
+			{
+				if ( ! isset($row['value']))
+				{
+					continue;
+				}
+				
+				$value = $row['value'];
+				
+				unset($row['value']);
+				
+				if (empty($row['label']))
+				{
+					$row['label'] = $value;
+				}
+				
+				$settings['type_options'][$value] = $row;
+			}
+		}
+		
+		$settings['blank_hide_fields'] = (isset($data['entry_type_blank_hide_fields'])) ? $data['entry_type_blank_hide_fields'] : array();
+		
+		$settings['fieldtype'] = (isset($data['entry_type_fieldtype'])) ? $data['entry_type_fieldtype'] : 'select';
+		
+		return $settings;
+
+	}
+
+	public function display_cell(){
+
+		return 'test';
+
+	}
+
+
 }
+
+
 
 /* End of file ft.entry_type.php */
 /* Location: ./system/expressionengine/third_party/entry_type/ft.entry_type.php */
