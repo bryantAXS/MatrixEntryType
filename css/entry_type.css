@@ -1,0 +1,9 @@
+.entry_type_matrix_col_label{
+	border-bottom: 1px dotted #D0D7DF;
+	font-weight:bold !important;
+	margin-bottom:20px;
+}
+
+.assets .entry_type_matrix_col_label{
+	margin: 7px 10px 10px 10px;
+}
