@@ -511,6 +511,8 @@ class Entry_type_ft extends EE_Fieldtype
 			return;
 		}
 
+		$this->EE->cp->load_package_js('entry_type');
+
 		//loading pre-reqs
 		$this->EE->lang->loadfile('entry_type', 'entry_type');
 		$this->EE->load->helper(array('array', 'html'));
@@ -600,7 +602,48 @@ class Entry_type_ft extends EE_Fieldtype
 							}
 						});
 					});
+				},
+				clearHideFields : function(){
+
+				},
+				refresh_cells: function(destroyed_el){
+
+					//destroyed el not passed
+					if(! destroyed_el){
+						destroyed_el = false;
+					}
+
+					var col_index = 1;
+					var $multiselects = $("tbody.matrix tr.matrix select[multiple=multiple]");
+					$multiselects.html("");
+					
+					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").each(function(){
+
+						if(destroyed_el && destroyed_el == this){
+							return;
+						}
+
+						var col_label = $(this).val();
+						var $new_option = $("<option value=\""+col_index+"\">"+col_label+"</option>");
+						$multiselects.append($new_option);
+						
+						col_index += 1;
+
+					});
+
 				}
+				,bind_destroy: function(){
+					var self = this;
+
+					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").bind("destroyed",function(){
+				
+						self.refresh_cells(this);
+
+					});
+				}
+				,unbind_destroy: function(){
+					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").unbind("destroyed");
+				}	
 			};
 			
 			$("#entry_type_add_row_matrix").click(EE.entryTypeSettings.addRow);
@@ -615,19 +658,23 @@ class Entry_type_ft extends EE_Fieldtype
 				}
 			}).children("tr").css({cursor:"move"});
 			
-			console.log($("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea"));
-
-			$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").live("focus",function(){
-				
-				name = $(this).attr("name");
-				col_id = name.split("][")[1].split("_")[2];
-				console.log(col_id);
-
-			});
-
+			
 			$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").live("blur",function(){
-				
+				EE.entryTypeSettings.refresh_cells();
 			});
+
+			$("#entry_type_refresh_cells").bind("click",function(){
+				EE.entryTypeSettings.refresh_cells();
+			});
+	
+			$(".matrix-btn.matrix-add").bind("click",function(){
+				EE.entryTypeSettings.unbind_destroy();
+				EE.entryTypeSettings.bind_destroy();
+			});
+
+
+
+			
 
 		');
 
@@ -688,10 +735,110 @@ class Entry_type_ft extends EE_Fieldtype
 
 	}
 
-	public function display_cell(){
+	public function display_cell($data){
 
-		return 'test';
+		$fields = array();
+		$options = array();
 
+		//get the Entry Type Labels and their corresponding hidden fields
+		foreach ($this->settings['type_options'] as $value => $row)
+		{
+			$fields[$value] = (isset($row['hide_fields'])) ? $row['hide_fields'] : array();
+			$options[$value] = ( ! empty($row['label'])) ? $row['label'] : $value;
+		}
+
+		if ( ! isset($this->EE->session->cache['entry_type']['display_field_matrix']))
+		{
+			
+			$this->EE->session->cache['entry_type']['display_field_matrix'] = TRUE;
+			
+			$this->EE->cp->load_package_css('entry_type');
+			$this->EE->javascript->output('
+			
+
+			EE.entry_type_matrix = {
+
+				col_headings: [],
+				
+				turn_off_col_header: function(el, cols){
+			 		$table = $(el).parents("table.matrix:eq(0)");
+			 		$table.find("thead tr th").css("display", "table-cell");
+
+			 		$.each(cols, function(index, value){
+			 			$table.find("thead tr th:eq("+value+")").css("display", "none");
+			 		});
+				},
+				
+				turn_off_cells: function(el, cols){
+			 		$row = $(el).parents("tr.matrix:eq(0)");
+			 		$row.find("td").css("display", "table-cell");
+
+			 		$.each(cols, function(index, value){
+			 			var cell_index = Number(value) - 1;
+			 			$row.find("td:eq("+cell_index+")").css("display", "none");
+			 		});
+				},
+				
+				set_col_headings: function(){
+
+					$(".entry_type_matrix_dropdown:eq(0)").parents("table.matrix:eq(0)").find("thead tr th").each(function(){
+				
+						$el = $(this);
+						if( $el.html() != "" ){
+							EE.entry_type_matrix.col_headings.push($el.html());	
+						}
+						//$el.remove();
+						
+					});
+				}
+
+			}
+
+			$(".entry_type_matrix_dropdown").live("change",function(){
+				
+				var cells_to_hide = $(this).find(":selected").attr("rel").split("|");
+				EE.entry_type_matrix.turn_off_col_header(this, cells_to_hide);
+				EE.entry_type_matrix.turn_off_cells(this, cells_to_hide);
+
+			});
+
+			Matrix.bind("entry_type", "display", function(cell){
+				
+				$.each(cell.row.dom["$tds"], function(index, value){
+					
+					if( ! EE.entry_type_matrix.col_headings.length){
+						EE.entry_type_matrix.set_col_headings();
+					}
+
+					var $td = $(this);
+					//$td.prepend("<label class=\"entry_type_matrix_col_label\">"+EE.entry_type_matrix.col_headings[index]+"</label>");
+				});
+
+			});
+
+				
+
+			');
+		}
+
+		return $this->display_field_select_matrix($this->cell_name, $options, $fields, $data);
+
+	}
+
+	public function display_field_select_matrix($cell_name, $options, $fields, $data){
+
+		$return_str = "<select class='entry_type_matrix_dropdown' name='field_id_1'>";
+
+		foreach($options as $field_name => $field_label)
+		{
+			$fields_to_hide = implode('|', $fields[$field_name]);  
+			$return_str .= "<option rel='".$fields_to_hide."' value='".$field_name."'>".$field_label."</option>";
+		}
+
+		$return_str .= "</select>";
+
+		return $return_str;
+	
 	}
 
 

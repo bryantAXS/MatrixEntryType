@@ -8,6 +8,7 @@ $lang = array(
 	'add_type' => '+ Add Type',
 	'type_value' => 'Short Name',
 	'type_label' => 'Label',
+	'refresh_cells' => 'Refresh Cell Names'
 );
 
 /* End of file entry_type_lang.php */

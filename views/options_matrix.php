@@ -15,4 +15,4 @@
 <?php endforeach; ?>
 	</tbody>
 </table>
-<p><a href="javascript:void(0);" id="entry_type_add_row_matrix"><?=lang('add_type')?></a></p>
+<p><a href="javascript:void(0);" id="entry_type_add_row_matrix"><?=lang('add_type')?></a><a style='margin-left:20px;' href="javascript:void(0);" id="entry_type_refresh_cells"><?=lang('refresh_cells')?></a></p>
