@@ -507,9 +507,9 @@ class Entry_type_ft extends EE_Fieldtype
 	 */
 	public function display_cell_settings($data){
 
-		if(! isset($data['type_options'])){
-			return;
-		}
+		// if(! isset($data['type_options'])){
+		// 	return;
+		// }
 
 		$this->EE->cp->load_package_js('entry_type');
 
@@ -583,7 +583,11 @@ class Entry_type_ft extends EE_Fieldtype
 
 		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row_matrix_dynamic', array('col_id' => $col_id, 'i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $cells), TRUE));
 
-		$this->EE->javascript->output('
+		if(! isset($this->EE->cache['entry_type']['entry_type_matrix_settings_js'])){
+			$this->EE->cache['entry_type']['entry_type_matrix_settings_js'] = TRUE;
+		
+
+			$this->EE->javascript->output('
 			EE.entryTypeSettings = {
 				rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
 				addRow: function() {
@@ -672,11 +676,9 @@ class Entry_type_ft extends EE_Fieldtype
 				EE.entryTypeSettings.bind_destroy();
 			});
 
-
-
-			
-
 		');
+
+		}
 
 		//now we add our two variables to the $vars array which we pass to the views
 		$vars = array();
@@ -787,9 +789,58 @@ class Entry_type_ft extends EE_Fieldtype
 						if( $el.html() != "" ){
 							EE.entry_type_matrix.col_headings.push($el.html());	
 						}
-						//$el.remove();
+						$el.remove();
 						
 					});
+				},
+
+				adjust_cell_widths: function(el){
+					
+					$el = $(el);
+
+					var t_body_width = $el.parents("tbody:eq(0)").width();
+					var $tr = $el.parents("tr:eq(0)");
+					t_body_width = t_body_width - $tr.find(">th").width();
+					//console.log(t_body_width);
+
+					var $visible_cells = $tr.find("td:visible");
+					var number_of_visible_cells = $visible_cells.length;
+					
+					//console.log(number_of_visible_cells);
+
+					cell_width = t_body_width / number_of_visible_cells;
+
+					//console.log(cell_width);
+
+					$visible_cells.width(cell_width);
+
+					console.log("set width");
+
+				}
+
+				,set_colspans: function(el){
+
+					$tbody = $(el).parents("tbody:eq(0)");
+					var max_number_tds = 0;
+					
+					$tbody.find(">tr").each(function(){
+						var row_visible_td_count = $(this).find(">td:visible").length;
+						if(row_visible_td_count > max_number_tds){
+							max_number_tds = row_visible_td_count;
+						}
+					});
+
+					$tbody.find(">tr").each(function(){
+						var $row_visible_tds = $(this).find(">td:visible");
+						$row_visible_tds.attr("colspan", "");
+						if($row_visible_tds.length < max_number_tds){
+							$($row_visible_tds.get(-1)).attr("colspan", (max_number_tds - $row_visible_tds.length) + 1);
+							console.log($row_visible_tds.get(-1));
+						}
+					});
+					
+					console.log("set colspan");
+
 				}
 
 			}
@@ -799,9 +850,12 @@ class Entry_type_ft extends EE_Fieldtype
 				var cells_to_hide = $(this).find(":selected").attr("rel").split("|");
 				EE.entry_type_matrix.turn_off_col_header(this, cells_to_hide);
 				EE.entry_type_matrix.turn_off_cells(this, cells_to_hide);
-
-			});
-
+				EE.entry_type_matrix.set_colspans(this);
+				EE.entry_type_matrix.adjust_cell_widths(this);
+				
+			}).trigger("change");
+		
+			
 			Matrix.bind("entry_type", "display", function(cell){
 				
 				$.each(cell.row.dom["$tds"], function(index, value){
@@ -811,7 +865,7 @@ class Entry_type_ft extends EE_Fieldtype
 					}
 
 					var $td = $(this);
-					//$td.prepend("<label class=\"entry_type_matrix_col_label\">"+EE.entry_type_matrix.col_headings[index]+"</label>");
+					$td.prepend("<label class=\"entry_type_matrix_col_label\">"+EE.entry_type_matrix.col_headings[index]+"</label>");
 				});
 
 			});
@@ -827,7 +881,7 @@ class Entry_type_ft extends EE_Fieldtype
 
 	public function display_field_select_matrix($cell_name, $options, $fields, $data){
 
-		$return_str = "<select class='entry_type_matrix_dropdown' name='field_id_1'>";
+		$return_str = "<select class='entry_type_matrix_dropdown' name='".$cell_name."'>";
 
 		foreach($options as $field_name => $field_label)
 		{
@@ -839,6 +893,16 @@ class Entry_type_ft extends EE_Fieldtype
 
 		return $return_str;
 	
+	}
+
+	public function save_cell($data){
+
+		//$this->_dump($data);
+
+		//exit("save");
+
+		return $data;
+
 	}
 
 
