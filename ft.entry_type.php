@@ -349,8 +349,6 @@ class Entry_type_ft extends EE_Fieldtype
 		$this->field_id = $this->EE->input->get('field_id');
 
 		$vars['fields'] = $this->fields();
-		
-		//$this->_dump($vars['fields']);
 
 		$this->convert_old_settings($settings);
 		

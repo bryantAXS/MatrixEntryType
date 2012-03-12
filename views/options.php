@@ -8,8 +8,6 @@
 		</tr>
 	</thead>
 	<tbody>
-<?php echo "<pre>"; print_r($type_options); echo "</pre>";?>
-<?php echo "<pre>"; print_r($fields); echo "</pre>";?>
 <?php $i = 0; ?>
 <?php foreach ($type_options as $value => $data) : ?>
 <?=$this->load->view('option_row', array('i' => (string) $i, 'value' => $value, 'label' => $data['label'], 'hide_fields' => $data['hide_fields'], 'fields' => $fields), TRUE)?>
