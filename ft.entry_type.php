@@ -502,15 +502,12 @@ class Entry_type_ft extends EE_Fieldtype
 
 	/**
 	 * Function that returns the fields we want in our cell type options container
-	 * @param  array $data previously-saved celltype settings for the column 
-	 * @return [type]
+	 * @param  array 	$data 	previously-saved celltype settings for the column 
+	 * @return string
 	 */
 	public function display_cell_settings($data){
 
-		// if(! isset($data['type_options'])){
-		// 	return;
-		// }
-
+		//loading some JS needed to run the plugin
 		$this->EE->cp->load_package_js('entry_type');
 
 		//loading pre-reqs
@@ -737,6 +734,11 @@ class Entry_type_ft extends EE_Fieldtype
 
 	}
 
+	/**
+	 * Creating the custom matrix cell HTML on the publish form
+	 * @param  array $data Previously-saved cell data
+	 * @return string
+	 */
 	public function display_cell($data){
 
 		$fields = array();
@@ -749,40 +751,52 @@ class Entry_type_ft extends EE_Fieldtype
 			$options[$value] = ( ! empty($row['label'])) ? $row['label'] : $value;
 		}
 
+		//these methods get run more than once on page load, so we want to make sure the javascript is only included once
 		if ( ! isset($this->EE->session->cache['entry_type']['display_field_matrix']))
 		{
-			
 			$this->EE->session->cache['entry_type']['display_field_matrix'] = TRUE;
-			
+				
 			$this->EE->cp->load_package_css('entry_type');
 			$this->EE->javascript->output('
 			
-
+			//an object to control the entry type matrix cells
 			EE.entry_type_matrix = {
 
 				col_headings: [],
 				
 				turn_off_col_header: function(el, cols){
+			 		
+			 		//get the matrix cell header elements and turn them all off
+
 			 		$table = $(el).parents("table.matrix:eq(0)");
 			 		$table.find("thead tr th").css("display", "table-cell");
 
 			 		$.each(cols, function(index, value){
 			 			$table.find("thead tr th:eq("+value+")").css("display", "none");
 			 		});
+				
 				},
 				
 				turn_off_cells: function(el, cols){
+			 		
+					//get the row container and turn on all of the tds
 			 		$row = $(el).parents("tr.matrix:eq(0)");
 			 		$row.find("td").css("display", "table-cell");
 
+			 		//turning off each individual column
 			 		$.each(cols, function(index, value){
+			 			
 			 			var cell_index = Number(value) - 1;
 			 			$row.find("td:eq("+cell_index+")").css("display", "none");
+			 		
 			 		});
+
 				},
 				
+				//setting col headings inside each individual cell (because col headers are turned off)
 				set_col_headings: function(){
 
+					//loop over all of the matrix column headings
 					$(".entry_type_matrix_dropdown:eq(0)").parents("table.matrix:eq(0)").find("thead tr th").each(function(){
 				
 						$el = $(this);
@@ -794,34 +808,33 @@ class Entry_type_ft extends EE_Fieldtype
 					});
 				},
 
+				//each time we turn off elements we need to adjust the width of each cell
 				adjust_cell_widths: function(el){
 					
 					$el = $(el);
 
+					//getting the total body width of the table
 					var t_body_width = $el.parents("tbody:eq(0)").width();
 					var $tr = $el.parents("tr:eq(0)");
 					t_body_width = t_body_width - $tr.find(">th").width();
-					//console.log(t_body_width);
-
+					
+					//getting the number of visible cells so we can figure out how wide they each should be
 					var $visible_cells = $tr.find("td:visible");
 					var number_of_visible_cells = $visible_cells.length;
 					
-					//console.log(number_of_visible_cells);
-
 					cell_width = t_body_width / number_of_visible_cells;
-
-					//console.log(cell_width);
 
 					$visible_cells.width(cell_width);
 
-					console.log("set width");
-
 				}
 
+				//because some rows will have more or less cells we need to expand some of the final cells
 				,set_colspans: function(el){
 
 					$tbody = $(el).parents("tbody:eq(0)");
 					var max_number_tds = 0;
+					
+					//we first have to loop over each of the rows and calculate the max number of columns 
 					
 					$tbody.find(">tr").each(function(){
 						var row_visible_td_count = $(this).find(">td:visible").length;
@@ -830,17 +843,17 @@ class Entry_type_ft extends EE_Fieldtype
 						}
 					});
 
+					//we loop over a second time and set the last cell in each row based on the number 
+					//of cells in that row and the max number in the table
+					
 					$tbody.find(">tr").each(function(){
 						var $row_visible_tds = $(this).find(">td:visible");
 						$row_visible_tds.attr("colspan", "");
 						if($row_visible_tds.length < max_number_tds){
 							$($row_visible_tds.get(-1)).attr("colspan", (max_number_tds - $row_visible_tds.length) + 1);
-							console.log($row_visible_tds.get(-1));
 						}
 					});
 					
-					console.log("set colspan");
-
 				}
 
 			}
@@ -879,14 +892,23 @@ class Entry_type_ft extends EE_Fieldtype
 
 	}
 
-	public function display_field_select_matrix($cell_name, $options, $fields, $data){
+	/**
+	 * building the entry type matrix cell used on the publish form
+	 * @param  string $cell_name 	the dynamic cell name needed for the matrix row dropdown
+	 * @param  array 	$options   	options for the field
+	 * @param  array 	$cells    	cells
+	 * @param  array 	$data      	cell data
+	 * @return string
+	 */
+	public function display_field_select_matrix($cell_name, $options, $cells, $data){
 
 		$return_str = "<select class='entry_type_matrix_dropdown' name='".$cell_name."'>";
 
-		foreach($options as $field_name => $field_label)
+		//loop over each cell name and create the options used for each matrix row
+		foreach($options as $cell_name => $cell_label)
 		{
-			$fields_to_hide = implode('|', $fields[$field_name]);  
-			$return_str .= "<option rel='".$fields_to_hide."' value='".$field_name."'>".$field_label."</option>";
+			$cells_to_hide = implode('|', $cells[$cell_name]);  
+			$return_str .= "<option rel='".$cells_to_hide."' value='".$cell_name."'>".$cell_label."</option>";
 		}
 
 		$return_str .= "</select>";
@@ -895,11 +917,12 @@ class Entry_type_ft extends EE_Fieldtype
 	
 	}
 
+	/**
+	 * Edit post data from publish form before submitted
+	 * @param  array $data data from form 
+	 * @return array
+	 */
 	public function save_cell($data){
-
-		//$this->_dump($data);
-
-		//exit("save");
 
 		return $data;
 
