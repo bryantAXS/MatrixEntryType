@@ -5,6 +5,7 @@ $lang = array(
 	'types' => 'Types',
 	'confirm_delete_type' => 'Are you sure you want to delete this Type?',
 	'hide_fields' => 'Hide Fields',
+	'hide_cells' => 'Hide Cells',
 	'add_type' => '+ Add Type',
 	'type_value' => 'Short Name',
 	'type_label' => 'Label',

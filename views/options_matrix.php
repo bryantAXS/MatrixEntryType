@@ -1,9 +1,9 @@
-<table width="100%" id="entry_type_options_matrix" class="mainTable">
+<table width="100%" style="width:500px;" id="entry_type_options_matrix" class="mainTable">
 	<thead>
 		<tr>
 			<th><?=lang('type_value')?></th>
 			<th><?=lang('type_label')?></th>
-			<th><?=lang('hide_fields')?></th>
+			<th><?=lang('hide_cells')?></th>
 			<th style="width:1%;">&nbsp;</th>
 		</tr>
 	</thead>

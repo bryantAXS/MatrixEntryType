@@ -413,41 +413,43 @@ class Entry_type_ft extends EE_Fieldtype
 
 		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row', array('i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $vars['fields']), TRUE));
 
-		// $this->EE->javascript->output('
-		// 	EE.entryTypeSettings = {
-		// 		rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
-		// 		addRow: function() {
-		// 			console.log("a");
-		// 			$("#entry_type_options tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options tbody tr").length));
-		// 		},
-		// 		removeRow: function(index) {
-		// 			$("#entry_type_options tbody tr").eq(index).remove();
-		// 			EE.entryTypeSettings.orderRows();
-		// 		},
-		// 		orderRows: function() {
-		// 			$("#entry_type_options tbody tr").each(function(index){
-		// 				$(this).find(":input").each(function(){
-		// 					var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
-		// 					if (match) {
-		// 						$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
-		// 					}
-		// 				});
-		// 			});
-		// 		}
-		// 	};
+		$this->EE->javascript->output('
+			EE.entryTypeSettings = {
+				rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
+				addRow: function() {
+					console.log("a");
+					$("#entry_type_options tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options tbody tr").length));
+				},
+				removeRow: function(index) {
+					console.log("b");
+					$("#entry_type_options tbody tr").eq(index).remove();
+					EE.entryTypeSettings.orderRows();
+				},
+				orderRows: function() {
+					console.log("c");
+					$("#entry_type_options tbody tr").each(function(index){
+						$(this).find(":input").each(function(){
+							var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
+							if (match) {
+								$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
+							}
+						});
+					});
+				}
+			};
 			
-		// 	$("#entry_type_add_row").click(EE.entryTypeSettings.addRow);
-		// 	$(".entry_type_remove_row").live("click", function(){
-		// 		if (confirm("'.lang('confirm_delete_type').'")) {
-		// 			EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
-		// 		}
-		// 	});
-		// 	$("#entry_type_options tbody").sortable({
-		// 		stop: function(e, ui) {
-		// 			EE.entryTypeSettings.orderRows();
-		// 		}
-		// 	}).children("tr").css({cursor:"move"});
-		// ');
+			$("#entry_type_add_row").click(EE.entryTypeSettings.addRow);
+			$(".entry_type_remove_row").live("click", function(){
+				if (confirm("'.lang('confirm_delete_type').'")) {
+					EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
+				}
+			});
+			$("#entry_type_options tbody").sortable({
+				stop: function(e, ui) {
+					EE.entryTypeSettings.orderRows();
+				}
+			}).children("tr").css({cursor:"move"});
+		');
 	}
 
 	public function save_settings($data)
@@ -489,13 +491,6 @@ class Entry_type_ft extends EE_Fieldtype
 	}
 
 	/* M A T R I X  C E L L  I N T E G R A T I O N */
-
-	public function _prep_cell_settings($settings)
-	{
-		//$settings = array_merge($default_settings, $settings);
-		//if ($settings['entry_type_options'] == 'any') $settings['content'] = 'all';
-	}
-
 
 
 	/**
@@ -579,100 +574,17 @@ class Entry_type_ft extends EE_Fieldtype
 		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row_matrix_dynamic', array('col_id' => $col_id, 'i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $cells), TRUE));
 
 		if(! isset($this->EE->cache['entry_type']['entry_type_matrix_settings_js'])){
+			
 			$this->EE->cache['entry_type']['entry_type_matrix_settings_js'] = TRUE;
 		
-
 			$this->EE->javascript->output('
-			EE.entryTypeSettings = {
-				rowTemplate: '.$this->EE->javascript->generate_json($row_template).',
-				addRow: function() {
-					$("#entry_type_options_matrix tbody").append(EE.entryTypeSettings.rowTemplate.replace(/{{INDEX}}/g, $("#entry_type_options_matrix tbody tr").length));
-				},
-				removeRow: function(index) {
-					$("#entry_type_options_matrix tbody tr").eq(index).remove();
-					EE.entryTypeSettings.orderRows();
-				},
-				orderRows: function() {
-					$("#entry_type_options_matrix tbody tr").each(function(index){
-						$(this).find(":input").each(function(){
-							var match = $(this).attr("name").match(/^entry_type_options\[\d+\]\[(.*?)\]$/);
-							if (match) {
-								$(this).attr("name", "entry_type_options["+index+"]["+match[1]+"]");
-							}
-						});
-					});
-				},
-				clearHideFields : function(){
+			EE.entryTypeMatrixSettings = {
+				rowTemplate: '.$this->EE->javascript->generate_json($row_template).'
+			};');
 
-				},
-				refresh_cells: function(destroyed_el){
-
-					//destroyed el not passed
-					if(! destroyed_el){
-						destroyed_el = false;
-					}
-
-					var col_index = 1;
-					var $multiselects = $("tbody.matrix tr.matrix select[multiple=multiple]");
-					$multiselects.html("");
-					
-					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").each(function(){
-
-						if(destroyed_el && destroyed_el == this){
-							return;
-						}
-
-						var col_label = $(this).val();
-						var $new_option = $("<option value=\""+col_index+"\">"+col_label+"</option>");
-						$multiselects.append($new_option);
-						
-						col_index += 1;
-
-					});
-
-				}
-				,bind_destroy: function(){
-					var self = this;
-
-					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").bind("destroyed",function(){
-				
-						self.refresh_cells(this);
-
-					});
-				}
-				,unbind_destroy: function(){
-					$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").unbind("destroyed");
-				}	
-			};
+			$theme_folder_url = defined('URL_THIRD_THEMES') ? URL_THIRD_THEMES : $this->EE->config->slash_item('theme_folder_url').'third_party/';
 			
-			$("#entry_type_add_row_matrix").click(EE.entryTypeSettings.addRow);
-			$(".entry_type_remove_row_matrix").live("click", function(){
-				if (confirm("'.lang('confirm_delete_type').'")) {
-					EE.entryTypeSettings.removeRow($(this).parents("tbody").find(".entry_type_remove_row").index(this));
-				}
-			});
-			$("#entry_type_options_matrix tbody").sortable({
-				stop: function(e, ui) {
-					EE.entryTypeSettings.orderRows();
-				}
-			}).children("tr").css({cursor:"move"});
-			
-			
-			$("tbody.matrix tr.matrix:first-child + tr textarea.matrix-textarea").live("blur",function(){
-				EE.entryTypeSettings.refresh_cells();
-			});
-
-			$("#entry_type_refresh_cells").bind("click",function(){
-				EE.entryTypeSettings.refresh_cells();
-			});
-	
-			$(".matrix-btn.matrix-add").bind("click",function(){
-				EE.entryTypeSettings.unbind_destroy();
-				EE.entryTypeSettings.bind_destroy();
-			});
-
-		');
-
+			$this->EE->cp->add_to_foot('<script type="text/javascript" src="'.$theme_folder_url.'entry_type/scripts/entry_type_matrix_settings.js"></script>');
 		}
 
 		//now we add our two variables to the $vars array which we pass to the views
@@ -774,15 +686,21 @@ class Entry_type_ft extends EE_Fieldtype
 	 * @param  array 	$data      	cell data
 	 * @return string
 	 */
-	public function display_field_select_matrix($cell_name, $options, $cells, $data){
+	public function display_field_select_matrix($select_name, $options, $cells, $data){
 
-		$return_str = "<select class='entry_type_matrix_dropdown' name='".$cell_name."'>";
+		$return_str = "<select class='entry_type_matrix_dropdown' name='".$select_name."'>";
 
 		//loop over each cell name and create the options used for each matrix row
 		foreach($options as $cell_name => $cell_label)
 		{
 			$cells_to_hide = implode('|', $cells[$cell_name]);  
-			$return_str .= "<option rel='".$cells_to_hide."' value='".$cell_name."'>".$cell_label."</option>";
+			$return_str .= "<option rel='".$cells_to_hide."' value='".$cell_name."'";
+			
+			if($data == $cell_name){
+				$return_str .= "selected='selected'";
+			}
+
+			$return_str .= ">".$cell_label."</option>";
 		}
 
 		$return_str .= "</select>";
