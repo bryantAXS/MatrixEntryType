@@ -525,12 +525,19 @@ class Entry_type_ft extends EE_Fieldtype
 			{	
 	
 				//we need to get the col id which is used when we're building dynmaic entry rows
-				if(! isset($col_id)){
-					$col_id = $row->col_id;
+				//however we don't want this to be featured in the hide cells because we don't want to hide it
+				//so we'll continue through the cool
+				
+				//$this->_dump($row);
+
+				if($row->col_type == 'entry_type'){
+					$this->cache['entry_type_col_id'] = $row->col_id;
+					continue;
 				}
 
-				$cells[(string) $i] = $row->col_label;
+				$cells[(string) $row->col_order] = $row->col_label;
 				$i++;
+
 			}
 
 			$this->cache['cells'] = $cells;
@@ -538,6 +545,14 @@ class Entry_type_ft extends EE_Fieldtype
 		}else{
 			$cells = $this->cache['cells'];
 		}
+
+		$col_id = false;
+		if(isset($this->cache['entry_type_col_id'])){
+			$col_id = $this->cache['entry_type_col_id'];
+		}
+		
+
+		ksort($cells);
 
 		// the next step is running over our $entry_type_options from the $data array and setting it up to be displayed in our form.
 		// if it's not set in $data we need to re-create it with blank placeholders
@@ -567,10 +582,8 @@ class Entry_type_ft extends EE_Fieldtype
 			
 			$type_options = $data['type_options'];
 		}
-
 		
 		//we have to add some javascript to handle the displaying and deleting of rows.
-
 		$row_template = preg_replace('/[\r\n\t]/', '', $this->EE->load->view('option_row_matrix_dynamic', array('col_id' => $col_id, 'i' => '{{INDEX}}', 'value' => '', 'label' => '', 'hide_fields' => array(), 'fields' => $cells), TRUE));
 
 		if(! isset($this->EE->cache['entry_type']['entry_type_matrix_settings_js'])){
@@ -660,6 +673,8 @@ class Entry_type_ft extends EE_Fieldtype
 			$fields[$value] = (isset($row['hide_fields'])) ? $row['hide_fields'] : array();
 			$options[$value] = ( ! empty($row['label'])) ? $row['label'] : $value;
 		}
+
+		//$this->_dump($fields);
 
 		//these methods get run more than once on page load, so we want to make sure the javascript is only included once
 		if ( ! isset($this->EE->session->cache['entry_type']['display_field_matrix']))
